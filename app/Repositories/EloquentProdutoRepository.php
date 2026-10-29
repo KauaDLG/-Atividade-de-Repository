@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Repositories;
+
+use App\Models\Produto;
+use Illuminate\Pagination\LengthAwarePaginator;
+
+class EloquentProdutoRepository implements ProdutoRepositoryInterface
+{
+    public function search(array $filtros = [], int $porPagina = 10): LengthAwarePaginator
+    {
+        return Produto::query()
+            
+            ->when($filtros['search'] ?? null,
+                fn ($query, $busca) => $query->where('nome', 'ILIKE', "%{$busca}%")
+            )
+            
+            ->when(isset($filtros['preco_min']),
+                fn ($query) => $query->where('preco', '>=', $filtros['preco_min'])
+            )
+            ->when(isset($filtros['preco_max']),
+                fn ($query) => $query->where('preco', '<=', $filtros['preco_max'])
+            )
+            
+            ->when(!empty($filtros['em_estoque']),
+                fn ($query) => $query->where('estoque', '>', 0)
+            )
+            ->paginate($porPagina);
+    }
+
+    public function create(array $dados): Produto
+    {
+        return Produto::create($dados);
+    }
+
+    public function update(Produto $produto, array $dados): Produto
+    {
+        $produto->update($dados);
+        return $produto->refresh();
+    }
+
+    public function delete(Produto $produto): void
+    {
+        $produto->delete();
+    }
+}
